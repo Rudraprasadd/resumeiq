@@ -1,0 +1,139 @@
+# ============================================================
+# ResumeIQ - Main Application Configuration
+# ============================================================
+# NEVER hardcode secrets here. Use environment variables.
+# In production, inject via Docker / Kubernetes secrets.
+# ============================================================
+
+spring:
+  application:
+    name: resumeiq-backend
+
+  # --- Database ---
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/resumeiq}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Flyway manages schema — never use create/create-drop in prod
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # --- Flyway DB migrations ---
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # --- Redis (for caching AI responses + rate limiting) ---
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  # --- File uploads ---
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+  # --- Jackson ---
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# --- Server ---
+server:
+  port: 8080
+  compression:
+    enabled: true
+  error:
+    include-message: never       # Never expose internal errors to client
+
+# --- JWT ---
+jwt:
+  secret: ${JWT_SECRET}          # Must be set in env — min 256 bits
+  expiration-ms: 86400000        # 24 hours
+  refresh-expiration-ms: 604800000  # 7 days
+
+# --- Claude AI ---
+claude:
+  api:
+    key: ${CLAUDE_API_KEY}
+    base-url: https://api.anthropic.com
+    model: claude-sonnet-4-20250514
+    max-tokens: 2000
+    timeout-seconds: 60
+
+# --- Razorpay ---
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID}
+  key-secret: ${RAZORPAY_KEY_SECRET}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+
+# --- Swagger / OpenAPI ---
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# --- Actuator (health check for load balancer) ---
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+
+# --- Logging ---
+logging:
+  level:
+    com.resumeiq: INFO
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# ============================================================
+# DEV profile — activate with: --spring.profiles.active=dev
+# ============================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.resumeiq: DEBUG
+
+---
+# ============================================================
+# PROD profile — activate with: --spring.profiles.active=prod
+# ============================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    show-sql: false
+
+server:
+  port: 8080
