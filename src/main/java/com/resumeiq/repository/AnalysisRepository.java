@@ -16,7 +16,7 @@ public interface AnalysisRepository extends JpaRepository<Analysis, UUID> {
 
     List<Analysis> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
-    /** Used to check Redis cache key before calling Claude API */
+    /** Used to check Redis cache key before calling the AI provider */
     Optional<Analysis> findByAiCacheKey(String cacheKey);
 
     /** Count analyses this month — for FREE tier quota enforcement */

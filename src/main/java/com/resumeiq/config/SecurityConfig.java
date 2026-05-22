@@ -1,6 +1,6 @@
 package com.resumeiq.config;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,17 +21,30 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     // No JwtAuthenticationFilter here — injected directly into securityFilterChain()
     // No UserRepository here — UserDetailsServiceImpl handles that
     private final UserDetailsServiceImpl userDetailsService;
+    private final List<String> allowedOrigins;
+
+    public SecurityConfig(UserDetailsServiceImpl userDetailsService,
+                          @Value("${app.cors.allowed-origins}") String allowedOrigins) {
+        this.userDetailsService = userDetailsService;
+        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        if (this.allowedOrigins.isEmpty()) {
+            throw new IllegalStateException("app.cors.allowed-origins must contain at least one origin.");
+        }
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
@@ -58,10 +71,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:5173",
-            "http://localhost:3000"
-        ));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
